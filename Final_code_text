@@ -1,0 +1,764 @@
+classdef Final < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure                        matlab.ui.Figure
+        Panel_7                         matlab.ui.container.Panel
+        AmplitudRSTextArea_2            matlab.ui.control.TextArea
+        AmplitudRSTextArea_2Label       matlab.ui.control.Label
+        FrecuenciaCardiacaTextArea_2    matlab.ui.control.TextArea
+        FrecuenciaCardiacaTextArea_2Label  matlab.ui.control.Label
+        IntervaloPRTextArea_2           matlab.ui.control.TextArea
+        IntervaloPRTextArea_2Label      matlab.ui.control.Label
+        IntervaloQRSTextArea_2          matlab.ui.control.TextArea
+        IntervaloQRSTextArea_2Label     matlab.ui.control.Label
+        FrecuenciasIntermeciasTextArea_2  matlab.ui.control.TextArea
+        GrabarButton_2                  matlab.ui.control.Button
+        TabGroup2                       matlab.ui.container.TabGroup
+        Tab_2                           matlab.ui.container.Tab
+        FrecuenciaButton                matlab.ui.control.Button
+        TiempoButton_2                  matlab.ui.control.Button
+        SEALESFILTRADASLabel            matlab.ui.control.Label
+        Panel_3                         matlab.ui.container.Panel
+        UIAxes3                         matlab.ui.control.UIAxes
+        Tab2_2                          matlab.ui.container.Tab
+        FrecuenciaButton_2              matlab.ui.control.Button
+        TiempoButton_3                  matlab.ui.control.Button
+        SEALESFILTRADASLabel_2          matlab.ui.control.Label
+        Panel_4                         matlab.ui.container.Panel
+        UIAxes4                         matlab.ui.control.UIAxes
+        TabGroup                        matlab.ui.container.TabGroup
+        Tab                             matlab.ui.container.Tab
+        TiempoButton                    matlab.ui.control.Button
+        FaseButton                      matlab.ui.control.Button
+        DecibeliosButton_2              matlab.ui.control.Button
+        MagnitudButton                  matlab.ui.control.Button
+        FILTROFIRLabel                  matlab.ui.control.Label
+        Panel                           matlab.ui.container.Panel
+        UIAxes                          matlab.ui.control.UIAxes
+        Tab2                            matlab.ui.container.Tab
+        FaseButton_2                    matlab.ui.control.Button
+        DecibeliosButton                matlab.ui.control.Button
+        MagnitudButton_2                matlab.ui.control.Button
+        FILTROIIRLabel                  matlab.ui.control.Label
+        Panel_2                         matlab.ui.container.Panel
+        UIAxes2                         matlab.ui.control.UIAxes
+        RESULTADOSIIRLabel              matlab.ui.control.Label
+        RESULTADORFIRLabel              matlab.ui.control.Label
+        Panel_6                         matlab.ui.container.Panel
+        AmplitudRSTextArea              matlab.ui.control.TextArea
+        AmplitudRSTextAreaLabel         matlab.ui.control.Label
+        FrecuenciaCardiacaTextArea      matlab.ui.control.TextArea
+        FrecuenciaCardiacaTextAreaLabel  matlab.ui.control.Label
+        IntervaloPRTextArea             matlab.ui.control.TextArea
+        IntervaloPRTextAreaLabel        matlab.ui.control.Label
+        IntervaloQRSTextArea            matlab.ui.control.TextArea
+        IntervaloQRSTextAreaLabel       matlab.ui.control.Label
+        FrecuenciasIntermeciasTextArea  matlab.ui.control.TextArea
+        GrabarButton                    matlab.ui.control.Button
+        Panel_5                         matlab.ui.container.Panel
+        SEALORIGINALLabel               matlab.ui.control.Label
+        SubirArchivoButton              matlab.ui.control.Button
+        UIAxes5                         matlab.ui.control.UIAxes
+        Label                           matlab.ui.control.Label
+    end
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Button pushed function: SubirArchivoButton
+        function SubirArchivoButtonPushed(app, event)
+         global x Fs T n t ECG R_fir ampR_fir S_fir ampS_fir Q_fir ampQ_fir P_fir ampP_fir 
+            
+            cla(app.UIAxes,'reset');
+            cla(app.UIAxes2,'reset');
+            cla(app.UIAxes3,'reset');
+            cla(app.UIAxes4,'reset');
+
+            % Abrir el selector de archivos
+            [nombreArchivo, rutaArchivo] = uigetfile('*.mat', 'Seleccionar archivo MAT');
+            
+            % Comprobar si se seleccionó un archivo
+            if nombreArchivo ~= 0
+                % Cargar el archivo MAT
+                datos = load(fullfile(rutaArchivo, nombreArchivo));
+                x = datos.x;
+                Fs = 500;
+                T = 1/Fs;
+                n = 0:length(x)-1;
+                t = n*T;
+                
+                cla(app.UIAxes5,'reset');
+                plot(app.UIAxes5,t,x)
+                title(app.UIAxes5,'Señal Original en el tiempo');
+                xlabel(app.UIAxes5,'Tiempo (s)');
+                ylabel(app.UIAxes5,'Amplitud (mV)');
+            elseif isequal(nombreArchivo, 0) 
+                 uialert(app.UIFigure, 'Se ha selecionado un archivo incorrecto', 'Invalid File', 'Icon', 'warning');
+                 return
+            end
+        
+            % N = 41;
+            % Fc = 11;    %35Hz   Frecuencia de corte en hz
+            % thetA = (Fc*2*pi)/Fc;   %frec de corte en rad
+            % n_filtro = 0:N;    %numero de muestras 
+            % 
+            % %ventana de hanning
+            % w = 0.54 - (0.46*cos((2*pi*n_filtro)/(N)));
+            % 
+            % %filtro prototipo N par impar
+            % hb = (sin(thetA*(n_filtro-(N/2))))/(pi*(n_filtro-(N/2)));
+            % %filtro desplazado
+            % hnb = hb * w;
+
+            %%------------------------Fir-----------------------------------------------------
+            N =40;
+            ventana = blackman(N+1);
+            b = fir1(N,0.14,ventana,"low");
+            
+            %Filtro FIR en el tiempo
+            [XFIR,FRECFIR] = freqz(b,1,8192,Fs);
+
+            plot(app.UIAxes,FRECFIR,XFIR);
+            title(app.UIAxes,'Respuesta en frecuencia del filtro FIR');
+            xlabel(app.UIAxes,'Frecuencia (Hz)');
+            ylabel(app.UIAxes,'Amplitud (mV)');
+            
+            %Señal filtrada
+            x_fil = filtrar(x,b,1);
+            %[YFIR,FREYFIR] = freqz(y1,1,8192,Fs);
+
+            [p s mu] = polyfit(t,x_fil,9);
+            tendencia = polyval(p,t,[],mu);
+            
+            ECG = x_fil-tendencia;
+
+            [R_fir, ampR_fir, S_fir, ampS_fir, Q_fir, ampQ_fir, P_fir, ampP_fir] = PQRS(ECG,t,Fs);
+
+            plot(app.UIAxes3,t,ECG);
+            hold(app.UIAxes3)
+            scatter(app.UIAxes3,P_fir,ECG(round(P_fir*Fs)));
+            scatter(app.UIAxes3,Q_fir,ECG(round(Q_fir*Fs)));
+            scatter(app.UIAxes3,R_fir,ECG(round(R_fir*Fs)));
+            scatter(app.UIAxes3,S_fir,ECG(round(S_fir*Fs)));
+            legend(app.UIAxes3,"ECG","P","Q","R","S");
+            title(app.UIAxes3,'Señal Filtrada')
+            xlabel(app.UIAxes3,'Tiempo (s)');
+            ylabel(app.UIAxes3,'Amplitud (mV)');
+
+
+            %Intervalos con FIR
+            
+            %Intervalo PR - FIR
+            aux1=0;
+            Pr = "";
+            for i = 1:1:length(R_fir)
+                PR_FIR(i) = Q_fir(i)-P_fir(i);
+            
+                if (PR_FIR(i)<0.12 && PR_FIR(i)>0.20)
+                    aux1 = aux1 + 1;
+                    Pr = sprintf('%s• El intervalo PR #/%i presenta un fallo\n', Pr,i);
+                end
+            end
+            if (aux1 == 0)
+                Pr = sprintf('%s• Ningun intervalo PR presenta fallas\n', Pr);
+            end
+
+            app.IntervaloPRTextArea.Value = Pr;
+                
+            %Intervalo QRS - FIR
+            aux2=0;
+            QRS_inter = "";
+            for i = 1:1:length(R_fir)
+                QRS_FIR(i) = S_fir(i)-Q_fir(i);
+
+                if (QRS_FIR(i)<0.06 && QRS_FIR(i)>0.12)
+                    aux2 = aux2 + 1;
+                    QRS_inter = sprintf('%s• El intervalo QRS #/%i presenta un fallo\n', QRS_inter,i);
+                end
+            end
+            if (aux2 == 0)
+                QRS_inter = sprintf('%s• Ningun intervalo QRS presenta fallas\n', QRS_inter);
+            end 
+            app.IntervaloQRSTextArea.Value = QRS_inter;
+
+            %Frecuencias instantáneas - FIR
+            aux3 = "";
+            aux3 = sprintf('%s• Las Frecuencias Instantaneas son:\n', aux3);
+            Tins = zeros(1,length(R_fir)-1);
+            Fins = zeros(1,length(R_fir)-1);
+
+            for i = 1:(length(R_fir)-1)
+                Tins(i)=R_fir(i+1)-R_fir(i);
+                Fins(i)=round(Tins(i)*60);
+                aux3= sprintf("%s\t #%2d %2d bmp \n",aux3,i,Fins(i));
+            end
+            app.FrecuenciasIntermeciasTextArea.Value = aux3;
+
+            %Frecuencia cardiaca - FIR
+            TCar = R_fir(end)-R_fir(1);
+            FCar = round(((length(R_fir)-1)/TCar)*60);
+            aux4 = "";
+            if FCar < 60
+                aux4 = sprintf("%s• El paciente tiene bradicardia (%d bmp)\n",aux4,FCar);
+            elseif (FCar >= 60 && FCar < 95)
+                aux4 = sprintf("%s• El paciente tiene un ritmo cardiaco normal (%d bmp)\n",aux4,FCar);
+            else
+                aux4 = sprintf("%s• El paciente tiene taquicardia (%d bmp)\n",aux4,FCar);
+            end
+            app.FrecuenciaCardiacaTextArea.Value = aux4;
+
+            %Diferencia Amplitud RS - FIR
+            aux5 = "";
+            aux5 = sprintf('%s• Diferencia Amplitud RS:\n', aux5);
+            for i = 1:(length(R_fir)-1)
+                dif1 = ampR_fir(i) - ampS_fir(i);
+                dif2 = ampR_fir(i+1) - ampS_fir(i+1);
+                dif = dif2 - dif1;
+                aux5 = sprintf("%s\t #%2d %.2f mV \n",aux5,i,dif);
+            end
+            app.AmplitudRSTextArea.Value = aux5;
+
+
+
+            %%------------------------------------IIR---------------------------------------------
+
+            %%Filtrado de la señal IIR
+            Fc = 35;     %Frecuencia de corte en Hz
+            
+            wcn = Fc/(Fs/2);
+            [bute,an] = butter(15,wcn,'low');
+            
+            x_fil2 = filtrar(x,bute,an);
+            
+            [XIIR,FRECIIR] = freqz(bute,an,8192,Fs);
+
+            plot(app.UIAxes2,FRECIIR,XIIR);
+            title(app.UIAxes2,'Respuesta en frecuencia del filtro IIR');
+            xlabel(app.UIAxes2,'Frecuencia (Hz)');
+            ylabel(app.UIAxes2,'Amplitud (mV)');
+            
+            [p2 s2 mu2] = polyfit(t,x_fil2,9);
+            tendencia = polyval(p2,t,[],mu2);
+            
+            %Señal filtrada
+            ECG2 = x_fil2-tendencia;
+            
+            [R_iir, ampR_iir, S_iir, ampS_iir, Q_iir, ampQ_iir, P_iir, ampP_iir] = PQRS(ECG2,t,Fs);
+
+            plot(app.UIAxes4,t,ECG);
+            hold(app.UIAxes4)
+            scatter(app.UIAxes4,P_iir,ECG2(round(P_iir*Fs)));
+            scatter(app.UIAxes4,Q_iir,ECG2(round(Q_iir*Fs)));
+            scatter(app.UIAxes4,R_iir,ECG2(round(R_iir*Fs)));
+            scatter(app.UIAxes4,S_iir,ECG2(round(S_iir*Fs)));
+            legend(app.UIAxes4,"ECG","P","Q","R","S");
+            title(app.UIAxes4,'Señal Filtrada')
+            xlabel(app.UIAxes4,'Tiempo (s)');
+            ylabel(app.UIAxes4,'Amplitud (mV)');
+
+            %Intervalos con IIR
+            
+            %Intervalo PR - IIR
+            aux1IR=0;
+            PrIIR = "";
+            for i = 1:1:length(R_iir)
+                PR_IIR(i) = Q_iir(i)-P_iir(i);
+            
+                if (PR_IIR(i)<0.12 && PR_IIR(i)>0.20)
+                    aux1IR = aux1IR + 1;
+                    PrIIR = sprintf('%s• El intervalo PR #/%i presenta un fallo\n', PrIIR,i);
+                end
+            end
+            if (aux1IR == 0)
+                PrIIR = sprintf('%s• Ningun intervalo PR presenta fallas\n', PrIIR);
+            end
+
+            app.IntervaloPRTextArea_2.Value = PrIIR;
+                
+
+            %Intervalo QRS - IIR
+            aux2IR=0;
+            QRS_interIR = "";
+            for i = 1:1:length(R_iir)
+                QRS_IR(i) = S_iir(i)-Q_iir(i);
+
+                if (QRS_IR(i)<0.06 && QRS_IR(i)>0.12)
+                    aux2IR = aux2IR + 1;
+                    QRS_interIR = sprintf('%s• El intervalo QRS #/%i presenta un fallo\n', QRS_interIR,i);
+                end
+            end
+            if (aux2IR == 0)
+                QRS_interIR = sprintf('%s• Ningun intervalo QRS presenta fallas\n', QRS_interIR);
+            end 
+            app.IntervaloQRSTextArea_2.Value = QRS_interIR;
+            
+
+            %Frecuencias instantáneas - IIR
+            aux3IR = "";
+            aux3IR = sprintf('%s• Las Frecuencias Instantaneas son:\n', aux3IR);
+            TinsIR = zeros(1,length(R_iir)-1);
+            FinsIR = zeros(1,length(R_iir)-1);
+
+            for i = 1:(length(R_iir)-1)
+                TinsIR(i)=R_iir(i+1)-R_iir(i);
+                FinsIR(i)=round(TinsIR(i)*60);
+                aux3IR= sprintf("%s\t #%2d %2d bmp \n",aux3IR,i,FinsIR(i));
+            end
+            app.FrecuenciasIntermeciasTextArea_2.Value = aux3IR;
+
+            %Frecuencia cardiaca - IIR
+            TCarIR = R_iir(end)-R_iir(1);
+            FCarIR = round(((length(R_iir)-1)/TCarIR)*60);
+            aux4IR = "";
+            if FCarIR < 60
+                aux4IR = sprintf("%s• El paciente tiene bradicardia (%d bmp)\n",aux4IR,FCarIR);
+            elseif (FCarIR >= 60 && FCarIR < 95)
+                aux4IR = sprintf("%s• El paciente tiene un ritmo cardiaco normal (%d bmp)\n",aux4IR,FCarIR);
+            else
+                aux4IR = sprintf("%s• El paciente tiene taquicardia (%d bmp)\n",aux4IR,FCarIR);
+            end
+            app.FrecuenciaCardiacaTextArea_2.Value = aux4IR;
+
+            %Diferencia Amplitud RS - IIR
+            aux5IR = "";
+            aux5IR = sprintf('%s• Diferencia Amplitud RS:\n', aux5IR);
+            for i = 1:(length(R_iir)-1)
+                dif1IR = ampR_iir(i) - ampS_iir(i);
+                dif2IR = ampR_iir(i+1) - ampS_iir(i+1);
+                difIR = dif2IR - dif1IR;
+                aux5IR = sprintf("%s\t #%2d %.2f mV \n",aux5IR,i,difIR);
+            end
+            app.AmplitudRSTextArea_2.Value = aux5IR;
+
+
+
+
+            
+
+        end
+
+        % Button pushed function: GrabarButton
+        function GrabarButtonPushed(app, event)
+            [Nombre, Ruta] = uiputfile('*.xlsx', 'Guardar como');
+
+            % Comprobar si el usuario canceló la selección
+            if isequal(Nombre, 0) || isequal(Ruta, 0)
+                return; % Salir sin hacer nada si se cancela la selección
+            end
+        
+            % Obtener el contenido del TextArea
+            IntPR = app.IntervaloPRTextArea.Value;
+            FrecCard = app.FrecuenciaCardiacaTextArea.Value;
+            AmpRS = app.AmplitudRSTextArea.Value;
+            IntQRS = app.IntervaloQRSTextArea.Value;
+            FrecIM = app.FrecuenciasIntermeciasTextArea.Value;
+            
+
+            % Crear un nuevo libro de Excel
+            fullPath = fullfile(Ruta, Nombre);
+            excelFile = fullfile(fullPath);
+
+            % Escribir el contenido en el archivo de Excel
+            writecell(IntPR, excelFile,'Sheet', 1, 'Range', 'B3');
+            writecell(FrecCard, excelFile,'Sheet', 1, 'Range', 'B4');
+            writecell(AmpRS, excelFile,'Sheet', 1, 'Range', 'B5');
+            writecell(IntQRS, excelFile,'Sheet', 1, 'Range', 'B6');
+            writecell(FrecIM, excelFile,'Sheet', 1, 'Range', 'B7');
+            
+
+            % Mostrar un mensaje de éxito
+            uialert(app.UIFigure, 'La información se ha guardado en el archivo de Excel.', 'Éxito', 'Icon', 'success');
+      
+
+
+
+        end
+
+        % Button pushed function: GrabarButton_2
+        function GrabarButton_2Pushed(app, event)
+            [Nombre, Ruta] = uiputfile('*.xlsx', 'Guardar como');
+
+            % Comprobar si el usuario canceló la selección
+            if isequal(Nombre, 0) || isequal(Ruta, 0)
+                return; % Salir sin hacer nada si se cancela la selección
+            end
+        
+            % Obtener el contenido del TextArea
+            IntPR = app.IntervaloPRTextArea_2.Value;
+            FrecCard = app.FrecuenciaCardiacaTextArea_2.Value;
+            AmpRS = app.AmplitudRSTextArea_2.Value;
+            IntQRS = app.IntervaloQRSTextArea_2.Value;
+            FrecIM = app.FrecuenciasIntermeciasTextArea_2.Value;
+            
+
+            % Crear un nuevo libro de Excel
+            fullPath = fullfile(Ruta, Nombre);
+            excelFile = fullfile(fullPath);
+
+            % Escribir el contenido en el archivo de Excel
+            writecell(IntPR, excelFile,'Sheet', 1, 'Range', 'B3');
+            writecell(FrecCard, excelFile,'Sheet', 1, 'Range', 'B4');
+            writecell(AmpRS, excelFile,'Sheet', 1, 'Range', 'B5');
+            writecell(IntQRS, excelFile,'Sheet', 1, 'Range', 'B6');
+            writecell(FrecIM, excelFile,'Sheet', 1, 'Range', 'B7');
+            
+
+            % Mostrar un mensaje de éxito
+            uialert(app.UIFigure, 'La información se ha guardado en el archivo de Excel.', 'Éxito', 'Icon', 'success');
+      
+
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Color = [0.9294 0.6941 0.1255];
+            app.UIFigure.Position = [100 100 1410 836];
+            app.UIFigure.Name = 'MATLAB App';
+
+            % Create Label
+            app.Label = uilabel(app.UIFigure);
+            app.Label.FontSize = 20;
+            app.Label.FontWeight = 'bold';
+            app.Label.Position = [274 792 937 26];
+            app.Label.Text = 'PROCESAMIENTO DIGITAL DE SEÑALES EN LA DETECCIÓN DE FALLAS DEL COMPLEJO QRS';
+
+            % Create Panel_5
+            app.Panel_5 = uipanel(app.UIFigure);
+            app.Panel_5.Position = [27 521 607 257];
+
+            % Create UIAxes5
+            app.UIAxes5 = uiaxes(app.Panel_5);
+            title(app.UIAxes5, 'Title')
+            xlabel(app.UIAxes5, 'X')
+            ylabel(app.UIAxes5, 'Y')
+            zlabel(app.UIAxes5, 'Z')
+            app.UIAxes5.Position = [26 53 555 168];
+
+            % Create SubirArchivoButton
+            app.SubirArchivoButton = uibutton(app.Panel_5, 'push');
+            app.SubirArchivoButton.ButtonPushedFcn = createCallbackFcn(app, @SubirArchivoButtonPushed, true);
+            app.SubirArchivoButton.Position = [253 15 100 23];
+            app.SubirArchivoButton.Text = 'Subir Archivo';
+
+            % Create SEALORIGINALLabel
+            app.SEALORIGINALLabel = uilabel(app.Panel_5);
+            app.SEALORIGINALLabel.Position = [18 219 105 22];
+            app.SEALORIGINALLabel.Text = 'SEÑAL ORIGINAL';
+
+            % Create Panel_6
+            app.Panel_6 = uipanel(app.UIFigure);
+            app.Panel_6.Position = [28 34 325 456];
+
+            % Create GrabarButton
+            app.GrabarButton = uibutton(app.Panel_6, 'push');
+            app.GrabarButton.ButtonPushedFcn = createCallbackFcn(app, @GrabarButtonPushed, true);
+            app.GrabarButton.Position = [252 36 61 23];
+            app.GrabarButton.Text = 'Grabar';
+
+            % Create FrecuenciasIntermeciasTextArea
+            app.FrecuenciasIntermeciasTextArea = uitextarea(app.Panel_6);
+            app.FrecuenciasIntermeciasTextArea.Position = [25 13 221 71];
+
+            % Create IntervaloQRSTextAreaLabel
+            app.IntervaloQRSTextAreaLabel = uilabel(app.Panel_6);
+            app.IntervaloQRSTextAreaLabel.HorizontalAlignment = 'right';
+            app.IntervaloQRSTextAreaLabel.Position = [121 338 80 22];
+            app.IntervaloQRSTextAreaLabel.Text = 'Intervalo QRS';
+
+            % Create IntervaloQRSTextArea
+            app.IntervaloQRSTextArea = uitextarea(app.Panel_6);
+            app.IntervaloQRSTextArea.Position = [20 281 278 58];
+
+            % Create IntervaloPRTextAreaLabel
+            app.IntervaloPRTextAreaLabel = uilabel(app.Panel_6);
+            app.IntervaloPRTextAreaLabel.HorizontalAlignment = 'right';
+            app.IntervaloPRTextAreaLabel.Position = [125 425 71 22];
+            app.IntervaloPRTextAreaLabel.Text = 'Intervalo PR';
+
+            % Create IntervaloPRTextArea
+            app.IntervaloPRTextArea = uitextarea(app.Panel_6);
+            app.IntervaloPRTextArea.Position = [20 368 277 58];
+
+            % Create FrecuenciaCardiacaTextAreaLabel
+            app.FrecuenciaCardiacaTextAreaLabel = uilabel(app.Panel_6);
+            app.FrecuenciaCardiacaTextAreaLabel.HorizontalAlignment = 'right';
+            app.FrecuenciaCardiacaTextAreaLabel.Position = [103 249 116 22];
+            app.FrecuenciaCardiacaTextAreaLabel.Text = 'Frecuencia Cardiaca';
+
+            % Create FrecuenciaCardiacaTextArea
+            app.FrecuenciaCardiacaTextArea = uitextarea(app.Panel_6);
+            app.FrecuenciaCardiacaTextArea.Position = [20 192 277 58];
+
+            % Create AmplitudRSTextAreaLabel
+            app.AmplitudRSTextAreaLabel = uilabel(app.Panel_6);
+            app.AmplitudRSTextAreaLabel.HorizontalAlignment = 'right';
+            app.AmplitudRSTextAreaLabel.Position = [124 161 72 22];
+            app.AmplitudRSTextAreaLabel.Text = 'Amplitud RS';
+
+            % Create AmplitudRSTextArea
+            app.AmplitudRSTextArea = uitextarea(app.Panel_6);
+            app.AmplitudRSTextArea.Position = [24 105 273 58];
+
+            % Create RESULTADORFIRLabel
+            app.RESULTADORFIRLabel = uilabel(app.UIFigure);
+            app.RESULTADORFIRLabel.FontSize = 14;
+            app.RESULTADORFIRLabel.FontWeight = 'bold';
+            app.RESULTADORFIRLabel.Position = [127 489 127 22];
+            app.RESULTADORFIRLabel.Text = 'RESULTADOR FIR';
+
+            % Create RESULTADOSIIRLabel
+            app.RESULTADOSIIRLabel = uilabel(app.UIFigure);
+            app.RESULTADOSIIRLabel.FontSize = 14;
+            app.RESULTADOSIIRLabel.FontWeight = 'bold';
+            app.RESULTADOSIIRLabel.Position = [474 489 167 22];
+            app.RESULTADOSIIRLabel.Text = 'RESULTADOS IIR';
+
+            % Create TabGroup
+            app.TabGroup = uitabgroup(app.UIFigure);
+            app.TabGroup.Position = [823 47 444 339];
+
+            % Create Tab
+            app.Tab = uitab(app.TabGroup);
+            app.Tab.Title = 'Tab';
+
+            % Create Panel
+            app.Panel = uipanel(app.Tab);
+            app.Panel.BackgroundColor = [0.902 0.902 0.902];
+            app.Panel.Position = [40 48 363 221];
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.Panel);
+            title(app.UIAxes, 'Title')
+            xlabel(app.UIAxes, 'X')
+            ylabel(app.UIAxes, 'Y')
+            zlabel(app.UIAxes, 'Z')
+            app.UIAxes.Position = [33 15 319 185];
+
+            % Create FILTROFIRLabel
+            app.FILTROFIRLabel = uilabel(app.Tab);
+            app.FILTROFIRLabel.FontSize = 18;
+            app.FILTROFIRLabel.FontWeight = 'bold';
+            app.FILTROFIRLabel.Position = [182 277 103 23];
+            app.FILTROFIRLabel.Text = 'FILTRO FIR';
+
+            % Create MagnitudButton
+            app.MagnitudButton = uibutton(app.Tab, 'push');
+            app.MagnitudButton.Position = [40 13 76 23];
+            app.MagnitudButton.Text = 'Magnitud';
+
+            % Create DecibeliosButton_2
+            app.DecibeliosButton_2 = uibutton(app.Tab, 'push');
+            app.DecibeliosButton_2.Position = [129 13 81 23];
+            app.DecibeliosButton_2.Text = 'Decibelios';
+
+            % Create FaseButton
+            app.FaseButton = uibutton(app.Tab, 'push');
+            app.FaseButton.Position = [223 13 60 23];
+            app.FaseButton.Text = 'Fase';
+
+            % Create TiempoButton
+            app.TiempoButton = uibutton(app.Tab, 'push');
+            app.TiempoButton.Position = [300 13 82 23];
+            app.TiempoButton.Text = 'Tiempo';
+
+            % Create Tab2
+            app.Tab2 = uitab(app.TabGroup);
+            app.Tab2.Title = 'Tab2';
+
+            % Create Panel_2
+            app.Panel_2 = uipanel(app.Tab2);
+            app.Panel_2.Position = [42 48 361 221];
+
+            % Create UIAxes2
+            app.UIAxes2 = uiaxes(app.Panel_2);
+            title(app.UIAxes2, 'Title')
+            xlabel(app.UIAxes2, 'X')
+            ylabel(app.UIAxes2, 'Y')
+            zlabel(app.UIAxes2, 'Z')
+            app.UIAxes2.Position = [22 17 300 185];
+
+            % Create FILTROIIRLabel
+            app.FILTROIIRLabel = uilabel(app.Tab2);
+            app.FILTROIIRLabel.FontSize = 18;
+            app.FILTROIIRLabel.FontWeight = 'bold';
+            app.FILTROIIRLabel.Position = [174 279 97 23];
+            app.FILTROIIRLabel.Text = 'FILTRO IIR';
+
+            % Create MagnitudButton_2
+            app.MagnitudButton_2 = uibutton(app.Tab2, 'push');
+            app.MagnitudButton_2.Position = [42 11 76 23];
+            app.MagnitudButton_2.Text = 'Magnitud';
+
+            % Create DecibeliosButton
+            app.DecibeliosButton = uibutton(app.Tab2, 'push');
+            app.DecibeliosButton.Position = [131 11 81 23];
+            app.DecibeliosButton.Text = 'Decibelios';
+
+            % Create FaseButton_2
+            app.FaseButton_2 = uibutton(app.Tab2, 'push');
+            app.FaseButton_2.Position = [225 11 60 23];
+            app.FaseButton_2.Text = 'Fase';
+
+            % Create TabGroup2
+            app.TabGroup2 = uitabgroup(app.UIFigure);
+            app.TabGroup2.Position = [740 402 608 376];
+
+            % Create Tab_2
+            app.Tab_2 = uitab(app.TabGroup2);
+            app.Tab_2.Title = 'Tab';
+
+            % Create Panel_3
+            app.Panel_3 = uipanel(app.Tab_2);
+            app.Panel_3.Position = [37 88 523 221];
+
+            % Create UIAxes3
+            app.UIAxes3 = uiaxes(app.Panel_3);
+            title(app.UIAxes3, 'Title')
+            xlabel(app.UIAxes3, 'X')
+            ylabel(app.UIAxes3, 'Y')
+            zlabel(app.UIAxes3, 'Z')
+            app.UIAxes3.Position = [30 16 474 185];
+
+            % Create SEALESFILTRADASLabel
+            app.SEALESFILTRADASLabel = uilabel(app.Tab_2);
+            app.SEALESFILTRADASLabel.FontSize = 18;
+            app.SEALESFILTRADASLabel.FontWeight = 'bold';
+            app.SEALESFILTRADASLabel.Position = [231 318 197 23];
+            app.SEALESFILTRADASLabel.Text = 'SEÑALES FILTRADAS';
+
+            % Create TiempoButton_2
+            app.TiempoButton_2 = uibutton(app.Tab_2, 'push');
+            app.TiempoButton_2.Position = [187 50 100 23];
+            app.TiempoButton_2.Text = 'Tiempo';
+
+            % Create FrecuenciaButton
+            app.FrecuenciaButton = uibutton(app.Tab_2, 'push');
+            app.FrecuenciaButton.Position = [317 50 100 23];
+            app.FrecuenciaButton.Text = 'Frecuencia';
+
+            % Create Tab2_2
+            app.Tab2_2 = uitab(app.TabGroup2);
+            app.Tab2_2.Title = 'Tab2';
+
+            % Create Panel_4
+            app.Panel_4 = uipanel(app.Tab2_2);
+            app.Panel_4.BackgroundColor = [0.902 0.902 0.902];
+            app.Panel_4.Position = [26 78 565 225];
+
+            % Create UIAxes4
+            app.UIAxes4 = uiaxes(app.Panel_4);
+            title(app.UIAxes4, 'Title')
+            xlabel(app.UIAxes4, 'X')
+            ylabel(app.UIAxes4, 'Y')
+            zlabel(app.UIAxes4, 'Z')
+            app.UIAxes4.Position = [29 10 518 202];
+
+            % Create SEALESFILTRADASLabel_2
+            app.SEALESFILTRADASLabel_2 = uilabel(app.Tab2_2);
+            app.SEALESFILTRADASLabel_2.FontSize = 18;
+            app.SEALESFILTRADASLabel_2.FontWeight = 'bold';
+            app.SEALESFILTRADASLabel_2.Position = [219 314 197 23];
+            app.SEALESFILTRADASLabel_2.Text = 'SEÑALES FILTRADAS';
+
+            % Create TiempoButton_3
+            app.TiempoButton_3 = uibutton(app.Tab2_2, 'push');
+            app.TiempoButton_3.Position = [188 26 100 23];
+            app.TiempoButton_3.Text = 'Tiempo';
+
+            % Create FrecuenciaButton_2
+            app.FrecuenciaButton_2 = uibutton(app.Tab2_2, 'push');
+            app.FrecuenciaButton_2.Position = [339 27 100 23];
+            app.FrecuenciaButton_2.Text = 'Frecuencia';
+
+            % Create Panel_7
+            app.Panel_7 = uipanel(app.UIFigure);
+            app.Panel_7.Position = [379 34 326 456];
+
+            % Create GrabarButton_2
+            app.GrabarButton_2 = uibutton(app.Panel_7, 'push');
+            app.GrabarButton_2.ButtonPushedFcn = createCallbackFcn(app, @GrabarButton_2Pushed, true);
+            app.GrabarButton_2.Position = [254 35 62 23];
+            app.GrabarButton_2.Text = 'Grabar';
+
+            % Create FrecuenciasIntermeciasTextArea_2
+            app.FrecuenciasIntermeciasTextArea_2 = uitextarea(app.Panel_7);
+            app.FrecuenciasIntermeciasTextArea_2.Position = [24 12 221 72];
+
+            % Create IntervaloQRSTextArea_2Label
+            app.IntervaloQRSTextArea_2Label = uilabel(app.Panel_7);
+            app.IntervaloQRSTextArea_2Label.HorizontalAlignment = 'right';
+            app.IntervaloQRSTextArea_2Label.Position = [121 338 80 22];
+            app.IntervaloQRSTextArea_2Label.Text = 'Intervalo QRS';
+
+            % Create IntervaloQRSTextArea_2
+            app.IntervaloQRSTextArea_2 = uitextarea(app.Panel_7);
+            app.IntervaloQRSTextArea_2.Position = [20 281 278 58];
+
+            % Create IntervaloPRTextArea_2Label
+            app.IntervaloPRTextArea_2Label = uilabel(app.Panel_7);
+            app.IntervaloPRTextArea_2Label.HorizontalAlignment = 'right';
+            app.IntervaloPRTextArea_2Label.Position = [125 425 71 22];
+            app.IntervaloPRTextArea_2Label.Text = 'Intervalo PR';
+
+            % Create IntervaloPRTextArea_2
+            app.IntervaloPRTextArea_2 = uitextarea(app.Panel_7);
+            app.IntervaloPRTextArea_2.Position = [20 368 277 58];
+
+            % Create FrecuenciaCardiacaTextArea_2Label
+            app.FrecuenciaCardiacaTextArea_2Label = uilabel(app.Panel_7);
+            app.FrecuenciaCardiacaTextArea_2Label.HorizontalAlignment = 'right';
+            app.FrecuenciaCardiacaTextArea_2Label.Position = [103 249 116 22];
+            app.FrecuenciaCardiacaTextArea_2Label.Text = 'Frecuencia Cardiaca';
+
+            % Create FrecuenciaCardiacaTextArea_2
+            app.FrecuenciaCardiacaTextArea_2 = uitextarea(app.Panel_7);
+            app.FrecuenciaCardiacaTextArea_2.Position = [20 192 277 58];
+
+            % Create AmplitudRSTextArea_2Label
+            app.AmplitudRSTextArea_2Label = uilabel(app.Panel_7);
+            app.AmplitudRSTextArea_2Label.HorizontalAlignment = 'right';
+            app.AmplitudRSTextArea_2Label.Position = [124 161 72 22];
+            app.AmplitudRSTextArea_2Label.Text = 'Amplitud RS';
+
+            % Create AmplitudRSTextArea_2
+            app.AmplitudRSTextArea_2 = uitextarea(app.Panel_7);
+            app.AmplitudRSTextArea_2.Position = [24 105 273 58];
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = Final
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
